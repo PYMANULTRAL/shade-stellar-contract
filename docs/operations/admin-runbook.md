@@ -386,6 +386,7 @@ Cross-reference on-chain transaction and event data as the authoritative record 
 ## Related pages
 
 - [Pausable emergency-stop mechanism](../security/pausable.md) — full function-by-function pause behavior.
+- [Disaster Recovery and Business Continuity Plan](disaster-recovery.md) — recovery from loss of admin keys, RPC providers, indexer data, keeper infrastructure, or archived contract state; this runbook covers active incidents only.
 - [Admin ownership and two-step admin transfer](../security/admin-and-ownership.md) — the mechanism behind [Role management](#role-management) and key-compromise blast radius.
 - [Upgrade Runbook](upgrade-runbook.md) — the procedure when remediation requires new contract code.
 - [Deployment Runbook](deployment.md) — initial setup this runbook assumes is already done, and the smoke test reused above.

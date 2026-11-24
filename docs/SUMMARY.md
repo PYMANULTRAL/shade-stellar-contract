@@ -64,6 +64,7 @@
   - [Deployment](operations/deployment.md)
   - [Admin Runbook](operations/admin-runbook.md)
   - [Upgrade Runbook](operations/upgrade-runbook.md)
+  - [Disaster Recovery](operations/disaster-recovery.md)
 - [Contributing](contributing/documentation-style-guide.md)
   - [Docs Tooling](contributing/docs-tooling.md)
   - [Concept Template](contributing/templates/concept-template.md)

@@ -82,6 +82,7 @@ The protocol assumes the following hold true:
 | Batch size limits | `pay_invoices_batch` processes all items in a single transaction. Very large batches may exceed Soroban resource limits. |
 | Admin centralisation | The admin has unilateral control over fees, token whitelisting, role assignments, and WASM upgrades. |
 | Refund window | Refund eligibility is based on a time window that must be configured per invoice. If not configured, invoices may become non-refundable. |
+| Operational continuity | Loss of the admin key, platform account key, RPC access, indexer data, billing keeper, or archived contract state is covered in the [disaster recovery and business continuity plan](../operations/disaster-recovery.md), which documents recovery steps, objectives, unrecoverable scenarios, and the test schedule. |
 
 ## Pre-audit checklist
 
