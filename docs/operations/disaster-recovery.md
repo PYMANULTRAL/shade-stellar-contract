@@ -2,7 +2,7 @@
 
 This runbook covers recovery from the loss of critical capabilities in the Shade Protocol: admin keys, the platform account key, RPC providers, indexer data, billing keeper infrastructure, and archived contract state. It complements the [Admin Operations and Incident Response Runbook](admin-runbook.md), which handles *active* incidents. This document handles *recovery of capability* once an incident has been contained.
 
-Each scenario documents its impact, detection, recovery steps, and recovery time objective (RTO) and recovery point objective (RPO) where applicable. Scenarios that cannot be fully recovered from are listed in [Unrecoverable scenarios](#unrecoverable-scenarios) together with their preventive controls.
+Each scenario documents its impact, detection, recovery steps, and recovery time objective (RTO) and recovery point objective (RPO) where applicable. Scenarios that cannot be fully recovered from are listed in [Unrecoverable scenarios](#unrecoverable-scenarios) together with their preventive controls. A schedule for exercising this plan is defined in [Testing schedule](#testing-schedule).
 
 ## Scope and definitions
 
@@ -141,41 +141,33 @@ Each scenario documents its impact, detection, recovery steps, and recovery time
 
 **RTO.** Restoration within 1 hour once detected and a funded operator account is available.
 
-**RPO.** None if restoration occurs before permanent deletion. Entries that are archived and never restored are, on Soroban, retained in archive state and can still be restored; loss of the ability to restore at all would require reconstruction from events where the data is event-derivable.
+**RPO.** None if restoration occurs before permanent deletion. Entries that are archived and never restored remain recoverable only while the archive state is retained by the network; the plan treats loss of that retention as unrecoverable (see below).
 
 ## Unrecoverable scenarios
 
-The following scenarios cannot be fully recovered from with the controls described above. Each lists the preventive controls that reduce the probability or impact.
+The following cases cannot be fully recovered from by the procedures above. Each lists the preventive controls that reduce the probability or impact.
 
 | Scenario | Why it is not recoverable | Preventive controls |
 |----------|---------------------------|---------------------|
-| Admin quorum permanently lost with no fallback key | The contract's admin functions can only be exercised by the admin; no on-chain path restores control. | Maintain a threshold that tolerates the loss of at least one signer; store a sealed recovery key in geographically separate custody; rehearse signer rotation annually. |
-| Platform account key lost with no backup and no admin reassignment | Funds controlled by a lost key cannot be moved. | Require encrypted backup of the platform key at creation; verify backup restores on a test device; prefer a contract-controlled platform account that the admin can repoint. |
-| Permanent deletion of contract state after TTL lapse beyond restoration | If entries are not event-derivable and their archive is lost, the data cannot be reconstructed. | Monitor TTLs with alerts well before expiry; extend TTL on a schedule; ensure all state-changing events are retained by independent indexers. |
-| Loss of on-chain funds through a protocol-level bug or malicious token | Funds moved by a contract vulnerability are not reversible by the protocol. | Pre-audit checklist and reentrancy guards (see [Threat model](../security/threat-model.md)); whitelist only audited tokens; keep fee and merchant balances on bounded exposure. |
-| Full loss of the event history from the network | Indexer rebuild depends on the chain retaining events; if the network itself fails irrecoverably, the rebuild source is gone. | Maintain independent archives of the event stream from at least two indexers in separate regions; keep deployment records and ledger hashes. |
-
-## Backup and preventive controls
-
-- **Keys.** Admin and multisig keys are generated on hardware devices where possible, with recovery material held in sealed, geographically separate locations. Signer list and threshold are recorded in the admin runbook.
-- **Providers.** At least two RPC providers are configured per environment with automated health checks.
-- **Indexer.** Nightly logical backups are taken with a retention of 30 days; the event replay procedure is documented and tested.
-- **Keeper.** Keeper runs under a supervised service with restart-on-failure and missed-cycle alerting.
-- **Storage.** TTL extension runs on a schedule with alerting at a defined threshold before expiry.
+| Admin quorum lost (Scenario 1, step 6) with no pre-approved fallback | No on-chain actor can authorize privileged changes, and contract upgrades are impossible. | Keep a cold-stored recovery key or governance escalation path documented and tested; set the multisig threshold so that losing one signer does not break quorum; keep signers on independent hardware in separate locations. |
+| Platform account key lost with no backup and no admin reassignment path (Scenario 2, step 3) | Funds controlled solely by a lost key cannot be moved. | Maintain an encrypted backup of the platform key in a designated secure store; verify the backup restores the expected address at each scheduled test; prefer a fee recipient that the admin can reassign. |
+| Admin key compromise that has already executed irreversible actions (for example, a malicious upgrade or drained balances) | Chain state changes cannot be rolled back. | Two-step admin transfer and timelocked sensitive actions; pause capability held by a separate role; monitoring and alerting on admin-address activity. |
+| Archived entries never restored and archive retention lost | Soroban state that is permanently evicted cannot be rebuilt from the ledger alone if archive data is no longer available from any provider. | Proactive TTL extension on all critical entries; TTL monitor with alert thresholds well before expiry; restoration tested on schedule; at least one archive-capable RPC source configured. |
+| Subscription cycles whose payer balance is insufficient during catch-up (Scenario 5, RPO) | The missed payment cannot be collected after the fact. | Balance-based alerts to payers and merchants before each cycle; clear cycle status reporting; merchant notification of failed cycles. |
+| Indexer data lost with no event replay possible because the chain history source is unavailable | Derived data cannot be rebuilt without the event source. | Keep at least two independent RPC or history providers; retain periodic logical backups of the indexer; archive contract events to durable storage. |
 
 ## Testing schedule
 
-| Activity | Frequency | Owner | Evidence recorded |
-|----------|-----------|-------|-------------------|
-| Tabletop review of all six scenarios | Quarterly | Protocol operations lead | Meeting notes and action items |
-| Admin signer rotation rehearsal on testnet | Semi-annually | Admin signers | Transaction hashes and timing |
-| RPC failover drill | Quarterly | Infrastructure on-call | Failover duration and any gaps |
-| Indexer restore from backup | Quarterly | Indexer maintainer | Restore time and verification diff |
-| Indexer full rebuild from events on testnet | Annually | Indexer maintainer | Replay duration and verification result |
-| Keeper catch-up simulation | Semi-annually | Keeper maintainer | Missed-cycle count and recovery time |
-| Archived entry restoration drill on testnet | Annually | Contracts engineer | Restore transaction and read-back verification |
-| Platform key backup restore test | Annually | Platform key holder | Confirmation of derived address match |
+The plan is exercised on the following schedule. Each exercise is recorded in a test log with the date, scenario, measured RTO and RPO, deviations from this document, and follow-up actions.
 
-Results of each test are recorded in the operations log and any gap against the RTO or RPO triggers a remediation issue. The plan itself is reviewed after every test and after every real incident.
+| Frequency | Exercise |
+|-----------|----------|
+| Quarterly | Tabletop review of Scenarios 1, 2, and the unrecoverable list; confirm signer roster, threshold, and recovery contacts are current. |
+| Quarterly | Failover drill for RPC provider (Scenario 3) against the secondary provider on testnet. |
+| Semi-annually | Indexer restore from logical backup and full event replay on a staging database (Scenario 4); re-measure replay duration. |
+| Semi-annually | Billing keeper outage simulation and catch-up on testnet (Scenario 5). |
+| Semi-annually | Restore an archived entry on testnet and verify the TTL monitor alerts (Scenario 6). |
+| Annually | Full admin key rotation drill on testnet, including a simulated lost-signer scenario (Scenario 1). |
+| Annually | Platform key backup restore verification (Scenario 2). |
 
-← [Back to operations](README.md)
+After any real incident or any change to the admin set, signers, RPC providers, or indexer schema, the relevant exercise is re-run within 30 days.
